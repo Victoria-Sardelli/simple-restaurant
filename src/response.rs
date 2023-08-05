@@ -17,3 +17,10 @@ pub struct SingleOrderResponse {
     pub status: String,
     pub data: OrderData,
 }
+
+#[derive(Serialize, Debug)]
+pub struct OrderListResponse {
+    pub status: String,
+    pub results: usize,
+    pub orders: Vec<OrderData>,
+}

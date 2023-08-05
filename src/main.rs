@@ -35,6 +35,11 @@ async fn main() {
         .and(warp::body::json())
         .and_then(handler::create_order_handler)
         .or(order_router
+            .and(warp::path!("tables" / ..))
+            .and(warp::get())
+            .and(warp::path::param())
+            .and_then(handler::get_orders_for_table_handler))
+        .or(order_router
             .and(warp::get())
             .and(warp::path::param())
             .and_then(handler::get_order_handler));

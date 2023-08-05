@@ -1,6 +1,6 @@
 use crate::{
     model::{Order, OrderNew, OrderJson},
-    response::{GenericResponse, SingleOrderResponse, OrderData},
+    response::{GenericResponse, SingleOrderResponse, OrderListResponse, OrderData},
     WebResult,
 };
 use rusqlite::{Connection, Result};
@@ -20,6 +20,43 @@ pub async fn health_checker_handler() -> WebResult<impl Reply> {
     Ok(json(response_json))
 }
 
+/*
+    Get all orders for table with gien table id
+*/
+pub async fn get_orders_for_table_handler(table_id: i32) -> WebResult<impl Reply> {
+    // query database for order with given id
+    let conn = Connection::open("restaurant.db")
+        .expect("Cannot access database");
+
+    let mut stmt = conn
+        .prepare("SELECT * from orders WHERE table_id=?1;")
+        .expect("Could not prepare SQL statement.");
+
+    let orders_iter = stmt.query_map([table_id], |row| {
+        Ok(Order {
+            order_id: row.get(0)?,
+            table_id: row.get(1)?,
+            item_id: row.get(2)?,
+            cook_time_minutes: row.get(3)?
+        })
+    }).expect("Could not query orders table.");
+
+    // collect all orders to return as vector
+    let orders: Vec<OrderData> = orders_iter
+        .map(|o| { 
+            OrderData {
+                order: o.unwrap()
+            }
+        })
+        .collect();
+
+    let json_response = OrderListResponse {
+        status: "success".to_string(),
+        results: orders.len(),
+        orders: orders
+    };
+    return Ok(with_status(json(&json_response), StatusCode::OK));
+}
 
 /*
     Get order stored in database using order id
