@@ -29,11 +29,15 @@ async fn main() {
         .and(warp::get())
         .and_then(handler::health_checker_handler);
 
-    let order_router = warp::path!("api" / "orders");
+    let order_router = warp::path!("api" / "orders" / ..);
     let order_routes = order_router
         .and(warp::post())
         .and(warp::body::json())
-        .and_then(handler::create_order_handler);
+        .and_then(handler::create_order_handler)
+        .or(order_router
+            .and(warp::get())
+            .and(warp::path::param())
+            .and_then(handler::get_order_handler));
 
     let routes = order_routes
         .with(cors)
