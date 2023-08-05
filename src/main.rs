@@ -31,18 +31,23 @@ async fn main() {
 
     let order_router = warp::path!("api" / "orders" / ..);
     let order_routes = order_router
+        .and(warp::path::end())
         .and(warp::post())
         .and(warp::body::json())
         .and_then(handler::create_order_handler)
         .or(order_router
-            .and(warp::path!("tables" / ..))
+            .and(warp::path("tables"))
             .and(warp::get())
-            .and(warp::path::param())
+            .and(warp::path::param::<i32>())
             .and_then(handler::get_orders_for_table_handler))
         .or(order_router
             .and(warp::get())
-            .and(warp::path::param())
-            .and_then(handler::get_order_handler));
+            .and(warp::path::param::<i32>())
+            .and_then(handler::get_order_handler))
+        .or(order_router
+            .and(warp::delete())
+            .and(warp::path::param::<i32>())
+            .and_then(handler::delete_order_handler));
 
     let routes = order_routes
         .with(cors)

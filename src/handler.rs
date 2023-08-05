@@ -24,7 +24,7 @@ pub async fn health_checker_handler() -> WebResult<impl Reply> {
     Get all orders for table with gien table id
 */
 pub async fn get_orders_for_table_handler(table_id: i32) -> WebResult<impl Reply> {
-    // query database for order with given id
+    // query database for orders with given table id
     let conn = Connection::open("restaurant.db")
         .expect("Cannot access database");
 
@@ -91,9 +91,48 @@ pub async fn get_order_handler(order_id: i32) -> WebResult<impl Reply> {
     // if no orders found with given id, return error message
     let error_response = GenericResponse {
         status: "fail".to_string(),
-        message: format!("No order found with given ID: {order_id}."),
+        message: format!("No order found with given ID: {order_id}"),
     };
     return Ok(with_status(json(&error_response), StatusCode::CONFLICT));
+}
+
+
+/*
+    Delete order with given order id
+*/
+pub async fn delete_order_handler(order_id: i32) -> WebResult<impl Reply> {
+    match delete_order(order_id) {
+        Ok(deleted_rows) => {
+            let json_response = GenericResponse {
+                status: "success".to_string(),
+                message: format!("Deleted {deleted_rows} order(s) with id: {order_id}"),
+            };
+            return Ok(with_status(json(&json_response), StatusCode::OK))
+        },
+        Err(error) => {
+            let error_response = GenericResponse {
+                status: "fail".to_string(),
+                message: format!("Could not delete order with id: {order_id}. Error: {error}"),
+            };
+            return Ok(with_status(json(&error_response), StatusCode::CONFLICT));
+        }
+    }
+
+}
+
+
+/*
+    Delete row from ORDERS table using given order id and return number of deleted rwows
+*/
+fn delete_order(order_id: i32) -> Result<usize> {
+    let conn = Connection::open("restaurant.db")?;
+
+    let deleted_rows = conn.execute(
+        "DELETE FROM orders WHERE order_id=?1",
+        [order_id],
+    )?;
+    
+    Ok(deleted_rows)
 }
 
 
