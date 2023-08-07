@@ -25,8 +25,7 @@ pub async fn health_checker_handler() -> WebResult<impl Reply> {
 */
 pub async fn get_orders_for_table_handler(table_id: i32) -> WebResult<impl Reply> {
     // query database for orders with given table id
-    let sql_statement = "SELECT * from orders WHERE table_id=?1;";
-    match repository::get_orders(table_id, sql_statement) {
+    match repository::get_orders_for_table(table_id) {
         Ok(orders) => {
             let order_data_list: Vec<OrderData> = orders.into_iter().map(|o| { 
                 OrderData {
@@ -57,8 +56,7 @@ pub async fn get_orders_for_table_handler(table_id: i32) -> WebResult<impl Reply
 */
 pub async fn get_order_handler(order_id: i32) -> WebResult<impl Reply> {
     // query database for order with given order id
-    let sql_statement = "SELECT * from orders WHERE order_id=?1;";
-    match repository::get_orders(order_id, sql_statement) {
+    match repository::get_order_by_id(order_id) {
         Ok(orders) => {
             // if order successfuly found with given id, return order data
             for order in orders {
