@@ -25,50 +25,76 @@ pub async fn health_checker_handler() -> WebResult<impl Reply> {
 */
 pub async fn get_orders_for_table_handler(table_id: i32) -> WebResult<impl Reply> {
     // query database for orders with given table id
-    let conn = Connection::open("restaurant.db")
-        .expect("Cannot access database");
-
-    let mut stmt = conn
-        .prepare("SELECT * from orders WHERE table_id=?1;")
-        .expect("Could not prepare SQL statement.");
-
-    let orders_iter = stmt.query_map([table_id], |row| {
-        Ok(Order {
-            order_id: row.get(0)?,
-            table_id: row.get(1)?,
-            item_id: row.get(2)?,
-            cook_time_minutes: row.get(3)?
-        })
-    }).expect("Could not query orders table.");
-
-    // collect all orders to return as vector
-    let orders: Vec<OrderData> = orders_iter
-        .map(|o| { 
-            OrderData {
-                order: o.unwrap()
-            }
-        })
-        .collect();
-
-    let json_response = OrderListResponse {
-        status: "success".to_string(),
-        results: orders.len(),
-        orders: orders
-    };
-    return Ok(with_status(json(&json_response), StatusCode::OK));
+    let sql_statement = "SELECT * from orders WHERE table_id=?1;";
+    match get_orders(table_id, sql_statement) {
+        Ok(orders) => {
+            let order_data_list: Vec<OrderData> = orders.into_iter().map(|o| { 
+                OrderData {
+                    order: o.unwrap()
+                }
+            })
+            .collect();
+            let json_response = OrderListResponse {
+                status: "success".to_string(),
+                results: order_data_list.len(),
+                orders: order_data_list
+            };
+            return Ok(with_status(json(&json_response), StatusCode::OK));
+        },
+        Err(error) => {
+            // if error querying database, return error message to user
+            let error_response = GenericResponse {
+                status: "fail".to_string(),
+                message: format!("Could not get orders for table with id: {table_id}. Error: {error}"),
+            };
+            return Ok(with_status(json(&error_response), StatusCode::CONFLICT));
+        }
+    }
 }
 
 /*
     Get order stored in database using order id
 */
 pub async fn get_order_handler(order_id: i32) -> WebResult<impl Reply> {
-    // query database for order with given id
-    let conn = Connection::open("restaurant.db")
-        .expect("Cannot access database");
+    // query database for order with given order id
+    let sql_statement = "SELECT * from orders WHERE order_id=?1;";
+    match get_orders(order_id, sql_statement) {
+        Ok(orders) => {
+            // if order successfuly found with given id, return order data
+            for order in orders {
+                let json_response = SingleOrderResponse {
+                    status: "success".to_string(),
+                    data: OrderData { order: order.unwrap() },
+                };
+                return Ok(with_status(json(&json_response), StatusCode::OK));
+            }
+            // if no orders found with given id, return error message
+            let error_response = GenericResponse {
+                status: "fail".to_string(),
+                message: format!("No order exists with given ID: {order_id}"),
+            };
+            return Ok(with_status(json(&error_response), StatusCode::CONFLICT));
+        },
+        Err(error) => {
+            // if error querying database, return error message to user
+            let error_response = GenericResponse {
+                status: "fail".to_string(),
+                message: format!("Could not get order with id: {order_id}. Error: {error}"),
+            };
+            return Ok(with_status(json(&error_response), StatusCode::CONFLICT));
+        }
+    }
+}
+
+
+/*
+    Get row(s) from ORDERS table fulfilling given conditions return results as collection
+*/
+fn get_orders(order_id: i32, statement: &str) -> Result<Vec<Result<Order>>> {
+    let conn = Connection::open("restaurant.db")?;
 
     let mut stmt = conn
-        .prepare("SELECT * from orders WHERE order_id=?1;")
-        .expect("Could not prepare SQL statement.");
+        .prepare(statement)?;
 
     let orders_iter = stmt.query_map([order_id], |row| {
         Ok(Order {
@@ -77,25 +103,9 @@ pub async fn get_order_handler(order_id: i32) -> WebResult<impl Reply> {
             item_id: row.get(2)?,
             cook_time_minutes: row.get(3)?
         })
-    }).expect("Could not query orders table.");
-
-    // if order successfuly found with given id, return order data
-    for order in orders_iter {
-        let json_response = SingleOrderResponse {
-            status: "success".to_string(),
-            data: OrderData { order: order.unwrap() },
-        };
-        return Ok(with_status(json(&json_response), StatusCode::OK));
-    }
-
-    // if no orders found with given id, return error message
-    let error_response = GenericResponse {
-        status: "fail".to_string(),
-        message: format!("No order found with given ID: {order_id}"),
-    };
-    return Ok(with_status(json(&error_response), StatusCode::CONFLICT));
+    }).unwrap();
+    Ok(orders_iter.collect())
 }
-
 
 /*
     Delete order with given order id
