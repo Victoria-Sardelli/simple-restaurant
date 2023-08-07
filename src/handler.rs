@@ -1,9 +1,9 @@
 use crate::{
     model::{Order, OrderNew, OrderJson},
     response::{GenericResponse, SingleOrderResponse, OrderListResponse, OrderData},
+    repository,
     WebResult,
 };
-use rusqlite::{Connection, Result};
 use warp::{http::StatusCode, reply::json, reply::with_status, Reply};
 use rand::Rng;
 
@@ -26,7 +26,7 @@ pub async fn health_checker_handler() -> WebResult<impl Reply> {
 pub async fn get_orders_for_table_handler(table_id: i32) -> WebResult<impl Reply> {
     // query database for orders with given table id
     let sql_statement = "SELECT * from orders WHERE table_id=?1;";
-    match get_orders(table_id, sql_statement) {
+    match repository::get_orders(table_id, sql_statement) {
         Ok(orders) => {
             let order_data_list: Vec<OrderData> = orders.into_iter().map(|o| { 
                 OrderData {
@@ -58,7 +58,7 @@ pub async fn get_orders_for_table_handler(table_id: i32) -> WebResult<impl Reply
 pub async fn get_order_handler(order_id: i32) -> WebResult<impl Reply> {
     // query database for order with given order id
     let sql_statement = "SELECT * from orders WHERE order_id=?1;";
-    match get_orders(order_id, sql_statement) {
+    match repository::get_orders(order_id, sql_statement) {
         Ok(orders) => {
             // if order successfuly found with given id, return order data
             for order in orders {
@@ -88,30 +88,10 @@ pub async fn get_order_handler(order_id: i32) -> WebResult<impl Reply> {
 
 
 /*
-    Get row(s) from ORDERS table fulfilling given conditions return results as collection
-*/
-fn get_orders(order_id: i32, statement: &str) -> Result<Vec<Result<Order>>> {
-    let conn = Connection::open("restaurant.db")?;
-
-    let mut stmt = conn
-        .prepare(statement)?;
-
-    let orders_iter = stmt.query_map([order_id], |row| {
-        Ok(Order {
-            order_id: row.get(0)?,
-            table_id: row.get(1)?,
-            item_id: row.get(2)?,
-            cook_time_minutes: row.get(3)?
-        })
-    }).unwrap();
-    Ok(orders_iter.collect())
-}
-
-/*
     Delete order with given order id
 */
 pub async fn delete_order_handler(order_id: i32) -> WebResult<impl Reply> {
-    match delete_order(order_id) {
+    match repository::delete_order(order_id) {
         Ok(deleted_rows) => {
             let json_response = GenericResponse {
                 status: "success".to_string(),
@@ -132,21 +112,6 @@ pub async fn delete_order_handler(order_id: i32) -> WebResult<impl Reply> {
 
 
 /*
-    Delete row from ORDERS table using given order id and return number of deleted rwows
-*/
-fn delete_order(order_id: i32) -> Result<usize> {
-    let conn = Connection::open("restaurant.db")?;
-
-    let deleted_rows = conn.execute(
-        "DELETE FROM orders WHERE order_id=?1",
-        [order_id],
-    )?;
-    
-    Ok(deleted_rows)
-}
-
-
-/*
     Store new order in database using order data from request
 */
 pub async fn create_order_handler(body: OrderJson) -> WebResult<impl Reply> {
@@ -159,7 +124,7 @@ pub async fn create_order_handler(body: OrderJson) -> WebResult<impl Reply> {
     };
 
     // store order details in db and respond with result of operation
-    match insert_order(&order_new) {
+    match repository::insert_order(&order_new) {
         Ok(order_id) => {
             let order = Order {
                 order_id: order_id.parse::<i32>().unwrap(),
@@ -181,20 +146,4 @@ pub async fn create_order_handler(body: OrderJson) -> WebResult<impl Reply> {
             return Ok(with_status(json(&error_response), StatusCode::CONFLICT));
         }
     }
-}
-
-
-/*
-    Insert new row in ORDERS table using given order data and return generated order id
-*/
-fn insert_order(order: &OrderNew) -> Result<String> {
-    let conn = Connection::open("restaurant.db")?;
-
-    conn.execute(
-        "INSERT INTO orders (table_id, item_id, cook_time_minutes) values (?1, ?2, ?3)",
-        &[&order.table_id, &order.item_id, &order.cook_time_minutes],
-    )?;
-    let last_id: String = conn.last_insert_rowid().to_string();
-
-    Ok(last_id)
 }

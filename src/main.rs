@@ -2,6 +2,7 @@ mod dbsetup;
 mod model;
 mod handler;
 mod response;
+mod repository;
 
 use warp::{http::Method, Filter, Rejection};
 
