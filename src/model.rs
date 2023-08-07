@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-// item details to be read from db
+// item details stored in db (includes generated id)
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Item {
@@ -8,9 +8,11 @@ pub struct Item {
     pub name: String,
 }
 
+// table details stored in db (includes generated id) 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Table {
+    pub table_id: i32,
     pub seats: i32,
 }
 
