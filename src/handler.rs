@@ -10,7 +10,7 @@ use rand::Rng;
 /*
     Health check endpoint to confirm server is reachable and responsive
 */
-pub async fn health_checker_handler() -> WebResult<impl Reply> {
+pub async fn health_check_handler() -> WebResult<impl Reply> {
     const MESSAGE: &str = "Healthy";
 
     let response_json = &GenericResponse {

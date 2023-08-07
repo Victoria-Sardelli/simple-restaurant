@@ -5,8 +5,35 @@ mod response;
 mod repository;
 
 use warp::{http::Method, Filter, Rejection};
+use serde::{Deserialize, Serialize};
+use confy::{self, ConfyError};
 
 type WebResult<T> = std::result::Result<T, Rejection>;
+
+/*
+    Applicaion configuration settings
+*/
+#[derive(Debug, Serialize, Deserialize)]
+struct AppConfig {
+    db_filename: String,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        AppConfig {
+            db_filename: "restaurant.db".to_string(),
+        }
+    }
+}
+
+/*
+    Loads application configuration file
+*/
+fn load_app_config() -> Result<AppConfig, ConfyError> {
+    let cfg: AppConfig = confy::load_path("src/config/app_config.toml")?;
+    Ok(cfg)
+}
+
 
 #[tokio::main]
 async fn main() {
@@ -15,8 +42,10 @@ async fn main() {
     }
     pretty_env_logger::init();
 
+    let cfg = load_app_config().expect("Could not load application configuration.");
+
     // create database and tables
-    dbsetup::setup()
+    dbsetup::setup(&cfg.db_filename)
         .expect("Failed to setup database.");
 
     // setup API routes with CORS
@@ -26,9 +55,9 @@ async fn main() {
         .allow_headers(vec!["content-type"])
         .allow_credentials(true);
 
-    let health_checker = warp::path!("api" / "healthchecker")
+    let health_checker = warp::path!("api" / "health")
         .and(warp::get())
-        .and_then(handler::health_checker_handler);
+        .and_then(handler::health_check_handler);
 
     let order_router = warp::path!("api" / "orders" / ..);
     let order_routes = order_router

@@ -2,8 +2,8 @@ use rusqlite::{Connection, Result};
 use rand::Rng;
 
 // Setup database and initialize with starter data for restaurant tables and menu items
-pub fn setup() -> Result<()> {
-    let conn = Connection::open("restaurant.db")?;
+pub fn setup(db_filename: &str) -> Result<()> {
+    let conn = Connection::open(db_filename)?;
 
     create_tables(&conn)
         .expect("Failed to create database tables.");
