@@ -1026,6 +1026,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "confy",
+ "once_cell",
  "pretty_env_logger",
  "rand",
  "rusqlite",

@@ -1,4 +1,4 @@
-use crate::model::{Order, OrderNew};
+use crate::{model::{Order, OrderNew}, DB_FILENAME};
 use rusqlite::{Connection, Result, Params};
 
 /*
@@ -23,7 +23,7 @@ pub fn get_order_by_id(order_id: i32) -> Result<Vec<Result<Order>>> {
     Execute given sql statement on ORDERS table and return resulting rows as collection of orders
 */
 pub fn get_orders(params: impl Params, statement: &str) -> Result<Vec<Result<Order>>> {
-    let conn = Connection::open("restaurant.db")?;
+    let conn = Connection::open(DB_FILENAME.get().expect("Database name not provided."))?;
 
     let mut stmt = conn
         .prepare(statement)?;
@@ -44,7 +44,7 @@ pub fn get_orders(params: impl Params, statement: &str) -> Result<Vec<Result<Ord
     Insert new row into ORDERS table using given order data and return generated order id
 */
 pub fn insert_order(order: &OrderNew) -> Result<String> {
-    let conn = Connection::open("restaurant.db")?;
+    let conn = Connection::open(DB_FILENAME.get().expect("Database name not provided."))?;
 
     conn.execute(
         "INSERT INTO orders (table_id, item_id, cook_time_minutes) values (?1, ?2, ?3)",
@@ -60,7 +60,7 @@ pub fn insert_order(order: &OrderNew) -> Result<String> {
     Delete row from ORDERS table using given order id and return number of deleted rwows
 */
 pub fn delete_order(order_id: i32) -> Result<usize> {
-    let conn = Connection::open("restaurant.db")?;
+    let conn = Connection::open(DB_FILENAME.get().expect("Database name not provided."))?;
 
     let deleted_rows = conn.execute(
         "DELETE FROM orders WHERE order_id=?1",

@@ -7,8 +7,12 @@ mod repository;
 use warp::{http::Method, Filter, Rejection};
 use serde::{Deserialize, Serialize};
 use confy::{self, ConfyError};
+use once_cell::sync::OnceCell;
 
 type WebResult<T> = std::result::Result<T, Rejection>;
+
+// database filename used when initializing and interacting with database
+pub static DB_FILENAME: OnceCell<String> = OnceCell::new();
 
 /*
     Applicaion configuration settings
@@ -45,7 +49,8 @@ async fn main() {
     let cfg = load_app_config().expect("Could not load application configuration.");
 
     // create database and tables
-    dbsetup::setup(&cfg.db_filename)
+    DB_FILENAME.set(cfg.db_filename).unwrap();
+    dbsetup::setup(DB_FILENAME.get().expect("Database name not provided."))
         .expect("Failed to setup database.");
 
     // setup API routes with CORS
